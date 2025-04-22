@@ -1356,19 +1356,16 @@
       try {
         console.log(`Sending feedback for conversation ${conversationId}: ${feedback}`);
         
-        const apiUrl = `http://3.227.232.209:8000/api/conversations/${conversationId}/feedback`;
+        const apiUrl = `https://3.227.232.209:8000/api/conversations/${conversationId}/feedback`;
         console.log(`Making request to: ${apiUrl}`);
         
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            // Add CORS headers if needed
             'Accept': 'application/json',
           },
           body: JSON.stringify({ feedback }),
-          // Add credentials if needed
-          // credentials: 'include',
         });
         
         console.log('Response status:', response.status);
