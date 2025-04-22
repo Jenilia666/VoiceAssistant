@@ -1356,29 +1356,19 @@
       try {
         console.log(`Sending feedback for conversation ${conversationId}: ${feedback}`);
         
-        const apiUrl = `https://3.227.232.209:8000/api/conversations/${conversationId}/feedback`;
+        const apiUrl = `http://3.227.232.209:8000/api/conversations/${conversationId}/feedback`;
         console.log(`Making request to: ${apiUrl}`);
-        
-        // Structure the feedback data to match DynamoDB format
-        const feedbackData = {
-          conversation_id: {
-            S: conversationId
-          },
-          feedback: {
-            S: feedback  // Store as string instead of NULL
-          },
-          timestamp: {
-            S: new Date().toISOString()
-          }
-        };
         
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            // Add CORS headers if needed
+            'Accept': 'application/json',
           },
-          body: JSON.stringify(feedbackData)
+          body: JSON.stringify({ feedback }),
+          // Add credentials if needed
+          // credentials: 'include',
         });
         
         console.log('Response status:', response.status);
@@ -1406,7 +1396,6 @@
           try {
             const errorData = await response.json();
             errorMessage = errorData.detail || 'Server returned an error';
-            console.error('Server error details:', errorData);
           } catch (e) {
             errorMessage = `Server returned status ${response.status}`;
           }
