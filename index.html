@@ -500,7 +500,7 @@
       if (!currentUser || !sessionId) return;
 
       try {
-        const response = await fetch(`https://3.227.232.209/api/users/${currentUser.user_id}/conversations`);
+        const response = await fetch(`https://3.227.232.209:8000/api/users/${currentUser.user_id}/conversations`);
         if (response.ok) {
           const data = await response.json();
           // Filter conversations for current session only
@@ -606,7 +606,7 @@
         socket.close();
       }
 
-      socket = new WebSocket("wss://3.227.232.209/ws/audio");
+      socket = new WebSocket("wss://3.227.232.209:8000/ws/audio");
       socket.binaryType = "arraybuffer";
 
       socket.onopen = async () => {
@@ -1356,24 +1356,19 @@
       try {
         console.log(`Sending feedback for conversation ${conversationId}: ${feedback}`);
         
-        const apiUrl = `https://3.227.232.209/api/conversations/${conversationId}/feedback`;
+        const apiUrl = `http://3.227.232.209:8000/api/conversations/${conversationId}/feedback`;
         console.log(`Making request to: ${apiUrl}`);
         
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            // Add CORS headers if needed
             'Accept': 'application/json',
-            'Origin': window.location.origin,
-            'Access-Control-Allow-Origin': '*'
           },
-          mode: 'cors',
-          credentials: 'include',
-          body: JSON.stringify({
-            feedback,
-            session_id: sessionId,
-            user_id: currentUser ? currentUser.user_id : 'guest'
-          }),
+          body: JSON.stringify({ feedback }),
+          // Add credentials if needed
+          // credentials: 'include',
         });
         
         console.log('Response status:', response.status);
@@ -1400,15 +1395,13 @@
           let errorMessage = 'Unknown error';
           try {
             const errorData = await response.json();
-            errorMessage = errorData.detail || errorData.message || 'Server returned an error';
-            console.error('Server error response:', errorData);
+            errorMessage = errorData.detail || 'Server returned an error';
           } catch (e) {
             errorMessage = `Server returned status ${response.status}`;
-            console.error('Error parsing server response:', e);
           }
           
           console.error('Failed to save feedback:', errorMessage);
-          statusDiv.textContent = `Failed to save feedback: ${errorMessage}`;
+          statusDiv.textContent = "Failed to save feedback";
           setTimeout(() => {
             statusDiv.textContent = "Ready to listen";
           }, 2000);
@@ -1418,26 +1411,14 @@
         console.error('Error saving feedback:', {
           error: error.message,
           name: error.name,
-          stack: error.stack,
-          url: apiUrl
+          stack: error.stack
         });
         
         // Show user-friendly error message
-        let errorMessage = 'Could not connect to server';
-        if (error.message.includes('Failed to fetch')) {
-          errorMessage = 'Unable to reach the server. Please check your connection.';
-        }
-        
-        statusDiv.textContent = `Error: ${errorMessage}`;
+        statusDiv.textContent = `Error: ${error.message || 'Could not connect to server'}`;
         setTimeout(() => {
           statusDiv.textContent = "Ready to listen";
         }, 2000);
-        
-        // Try to reconnect WebSocket if connection is lost
-        if (!socket || socket.readyState !== WebSocket.OPEN) {
-          console.log('Attempting to reconnect WebSocket...');
-          initializeWebSocket();
-        }
       }
     }
   </script>
