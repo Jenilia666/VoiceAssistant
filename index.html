@@ -1364,8 +1364,16 @@
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
+            'Origin': window.location.origin,
+            'Access-Control-Allow-Origin': '*'
           },
-          body: JSON.stringify({ feedback }),
+          mode: 'cors',
+          credentials: 'include',
+          body: JSON.stringify({
+            feedback,
+            session_id: sessionId,
+            user_id: currentUser ? currentUser.user_id : 'guest'
+          }),
         });
         
         console.log('Response status:', response.status);
@@ -1392,13 +1400,15 @@
           let errorMessage = 'Unknown error';
           try {
             const errorData = await response.json();
-            errorMessage = errorData.detail || 'Server returned an error';
+            errorMessage = errorData.detail || errorData.message || 'Server returned an error';
+            console.error('Server error response:', errorData);
           } catch (e) {
             errorMessage = `Server returned status ${response.status}`;
+            console.error('Error parsing server response:', e);
           }
           
           console.error('Failed to save feedback:', errorMessage);
-          statusDiv.textContent = "Failed to save feedback";
+          statusDiv.textContent = `Failed to save feedback: ${errorMessage}`;
           setTimeout(() => {
             statusDiv.textContent = "Ready to listen";
           }, 2000);
@@ -1408,14 +1418,26 @@
         console.error('Error saving feedback:', {
           error: error.message,
           name: error.name,
-          stack: error.stack
+          stack: error.stack,
+          url: apiUrl
         });
         
         // Show user-friendly error message
-        statusDiv.textContent = `Error: ${error.message || 'Could not connect to server'}`;
+        let errorMessage = 'Could not connect to server';
+        if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Unable to reach the server. Please check your connection.';
+        }
+        
+        statusDiv.textContent = `Error: ${errorMessage}`;
         setTimeout(() => {
           statusDiv.textContent = "Ready to listen";
         }, 2000);
+        
+        // Try to reconnect WebSocket if connection is lost
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+          console.log('Attempting to reconnect WebSocket...');
+          initializeWebSocket();
+        }
       }
     }
   </script>
