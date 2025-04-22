@@ -606,7 +606,7 @@
         socket.close();
       }
 
-      socket = new WebSocket("wss://3.227.232.209/ws/audio");
+      socket = new WebSocket("wss://3.227.232.209:8000/ws/audio");
       socket.binaryType = "arraybuffer";
 
       socket.onopen = async () => {
