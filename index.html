@@ -606,11 +606,10 @@
         socket.close();
       }
 
-      // Change from ws:// to wss:// for secure WebSocket connection
-      socket = new WebSocket("wss://3.227.232.209:8000/ws/audio");
+      socket = new WebSocket("wss://3.227.232.209/ws/audio");
       socket.binaryType = "arraybuffer";
 
-      socket.onopen = () => {
+      socket.onopen = async () => {
         log("WebSocket connected");
         // Get the stored session ID
         const currentSessionId = localStorage.getItem('currentSessionId');
@@ -631,7 +630,7 @@
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify(initData));
           statusDiv.textContent = "Ready to listen";
-          initAudioContext();
+          await initAudioContext();
         } else {
           console.error('WebSocket not ready');
         }
@@ -640,26 +639,12 @@
       socket.onclose = () => {
         log("WebSocket disconnected");
         statusDiv.textContent = "Disconnected";
-        
-        // Attempt to reconnect after 3 seconds
-        setTimeout(() => {
-          log("Attempting to reconnect...");
-          initializeWebSocket();
-        }, 3000);
-      };
-
-      socket.onerror = (error) => {
-        log(`WebSocket error: ${error.message}`);
-        statusDiv.textContent = "Connection error";
       };
 
       socket.onmessage = (event) => {
         // Skip binary messages (audio data)
         if (event.data instanceof Blob || event.data instanceof ArrayBuffer) {
           messageQueue.push(event);
-          console.log(`Added message to queue (queue size: ${messageQueue.length})`);
-          
-          // Start processing if not already doing so
           if (!isProcessingMessage) {
             processNextMessage();
           }
