@@ -114,6 +114,31 @@
       font-size: 0.9rem;
     }
 
+    /* Connection button styles */
+    .connection-button {
+      background: #00c2cb;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 10px 0;
+      font-size: 1rem;
+      transition: background-color 0.3s;
+    }
+
+    .connection-button.disconnected {
+      background: #ff4444;
+    }
+
+    .connection-button:hover {
+      background: #00a0a8;
+    }
+
+    .connection-button.disconnected:hover {
+      background: #cc3333;
+    }
+
     /* Voice orb with enhanced design */
     .voice-orb {
       width: 120px;
@@ -469,6 +494,7 @@
     <div class="content-wrapper">
       <div class="header-section">
         <h1>BART Voice Assistant 🎧</h1>
+        <button id="connectionToggle" class="connection-button">Start</button>
         <div class="voice-orb">
           <div class="particles"></div>
         </div>
@@ -487,6 +513,7 @@
     let conversations = [];
     let socket = null;
     let sessionId = null;
+    let isConnected = false;
     
     // Function to clear conversations and create new session
     function initializeNewSession() {
@@ -495,12 +522,35 @@
       displayConversations();
     }
 
+    // Add connection toggle functionality
+    const connectionToggle = document.getElementById('connectionToggle');
+    connectionToggle.addEventListener('click', () => {
+      if (isConnected) {
+        // Disconnect
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.close();
+        }
+        socket = null;
+        isConnected = false;
+        connectionToggle.textContent = 'Start';
+        connectionToggle.classList.add('disconnected');
+        statusDiv.textContent = "Disconnected";
+        voiceOrb.classList.remove("listening", "processing");
+      } else {
+        // Connect
+        initializeWebSocket();
+        isConnected = true;
+        connectionToggle.textContent = 'Stop';
+        connectionToggle.classList.remove('disconnected');
+      }
+    });
+
     // Add conversation update function
     async function updateConversations() {
       if (!currentUser || !sessionId) return;
 
       try {
-        const response = await fetch(`https://3.227.232.209:8000/api/users/${currentUser.user_id}/conversations`);
+        const response = await fetch(`http://3.227.232.209:8000/api/users/${currentUser.user_id}/conversations`);
         if (response.ok) {
           const data = await response.json();
           // Filter conversations for current session only
@@ -555,14 +605,10 @@
 
     // New function for guest login
     async function handleGuestLogin() {
-      const code = prompt("Please enter your 6-digit code:");
+      // Generate a random 6-digit code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
       
-      if (!code || code.length !== 6 || !/^\d+$/.test(code)) {
-        alert("Please enter a valid 6-digit code (6 numbers only)");
-        return;
-      }
-      
-      // Set session ID to 6-digit code
+      // Set session ID to generated 6-digit code
       sessionId = code;
       localStorage.setItem('currentSessionId', sessionId);
       
@@ -572,7 +618,7 @@
       // Update UI for guest
       document.getElementById('loginContainer').classList.add('hidden');
       document.getElementById('mainContent').classList.remove('hidden');
-      document.getElementById('userDisplay').textContent = "Welcome, Guest!";
+      document.getElementById('userDisplay').textContent = `Welcome, Guest! (Session: ${code})`;
       
       // Initialize WebSocket for guest
       initializeWebSocket();
@@ -606,11 +652,14 @@
         socket.close();
       }
 
-      socket = new WebSocket("wss://3.227.232.209/ws/audio");
+      socket = new WebSocket("wss://3.227.232.209:8000/ws/audio");
       socket.binaryType = "arraybuffer";
 
       socket.onopen = async () => {
         log("WebSocket connected");
+        isConnected = true;
+        connectionToggle.textContent = 'Stop';
+        connectionToggle.classList.remove('disconnected');
         // Get the stored session ID
         const currentSessionId = localStorage.getItem('currentSessionId');
         if (!currentSessionId) {
@@ -1298,42 +1347,6 @@
           feedbackDiv.appendChild(button);
         });
         
-        // Update the CSS for feedback buttons
-        const style = document.createElement('style');
-        style.textContent = `
-          .feedback-buttons {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-            flex-wrap: wrap;
-          }
-
-          .feedback-button {
-            background: none;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            padding: 5px 10px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-          }
-
-          .feedback-button:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-            border-color: #00c2cb;
-          }
-
-          .feedback-button.selected {
-            background-color: #00c2cb;
-            color: white;
-            border-color: #00c2cb;
-          }
-        `;
-        document.head.appendChild(style);
-        
         convDiv.appendChild(headerDiv);
         // Only append query div if it has content
         if (conv.query && conv.query.trim()) {
@@ -1345,33 +1358,20 @@
         container.appendChild(convDiv);
       });
 
-      // Scroll to the bottom of the container
-      container.scrollTop = container.scrollHeight;
+      // Scroll to the top of the container
+      container.scrollTop = 0;
     }
 
     // Function to handle feedback
     async function handleFeedback(conversationId, feedback) {
-      const statusDiv = document.getElementById('status');
-      
       try {
-        console.log(`Sending feedback for conversation ${conversationId}: ${feedback}`);
-        
-        const apiUrl = `http://3.227.232.209:8000/api/conversations/${conversationId}/feedback`;
-        console.log(`Making request to: ${apiUrl}`);
-        
-        const response = await fetch(apiUrl, {
+        const response = await fetch(`http://3.227.232.209:8000/api/conversations/${conversationId}/feedback`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            // Add CORS headers if needed
-            'Accept': 'application/json',
           },
-          body: JSON.stringify({ feedback }),
-          // Add credentials if needed
-          // credentials: 'include',
+          body: JSON.stringify({ feedback })
         });
-        
-        console.log('Response status:', response.status);
         
         if (response.ok) {
           // Update local state
@@ -1386,36 +1386,28 @@
           displayConversations();
           
           // Show success status
+          const statusDiv = document.getElementById('status');
           statusDiv.textContent = "Feedback saved ✓";
           setTimeout(() => {
             statusDiv.textContent = "Ready to listen";
           }, 2000);
         } else {
           // Get error details
-          let errorMessage = 'Unknown error';
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.detail || 'Server returned an error';
-          } catch (e) {
-            errorMessage = `Server returned status ${response.status}`;
-          }
+          const errorData = await response.json();
+          console.error('Failed to save feedback:', errorData.detail || 'Unknown error');
           
-          console.error('Failed to save feedback:', errorMessage);
+          // Show error status
+          const statusDiv = document.getElementById('status');
           statusDiv.textContent = "Failed to save feedback";
           setTimeout(() => {
             statusDiv.textContent = "Ready to listen";
           }, 2000);
         }
       } catch (error) {
-        // Log the specific error
-        console.error('Error saving feedback:', {
-          error: error.message,
-          name: error.name,
-          stack: error.stack
-        });
-        
-        // Show user-friendly error message
-        statusDiv.textContent = `Error: ${error.message || 'Could not connect to server'}`;
+        console.error('Error saving feedback:', error);
+        // Show error status
+        const statusDiv = document.getElementById('status');
+        statusDiv.textContent = "Error saving feedback";
         setTimeout(() => {
           statusDiv.textContent = "Ready to listen";
         }, 2000);
