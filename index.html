@@ -550,7 +550,7 @@
       if (!currentUser || !sessionId) return;
 
       try {
-        const response = await fetch(`http://3.227.232.209:8000/api/users/${currentUser.user_id}/conversations`);
+        const response = await fetch(`https://3.227.232.209:8000/api/users/${currentUser.user_id}/conversations`);
         if (response.ok) {
           const data = await response.json();
           // Filter conversations for current session only
